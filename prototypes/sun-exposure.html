@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sun Exposure — Drafting Table</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#0A1F38;--panel:#0E2A47;--ink:#EAF2FF;--dim:rgba(234,242,255,.55);
+  --line:rgba(234,242,255,.16);--accent:#7FD1D9;--sun:#F2C14E;--warm:#E2884C;--cool:#5B8AC4;
+  --grid:rgba(234,242,255,.055);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:24px 24px;color:var(--ink);font-family:Inter,system-ui,sans-serif;font-size:14px;padding:16px 12px 50px}
+.app{max-width:760px;margin:0 auto}
+.eyebrow{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--accent)}
+h1{font-family:'Space Mono',monospace;font-size:19px;margin:5px 0 16px}
+h2{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin:0 0 10px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:13px;margin-bottom:12px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end}
+.field{display:flex;flex-direction:column;gap:4px}
+label{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);font-family:'Space Mono',monospace}
+input,select{background:var(--paper);border:1px solid var(--line);border-radius:3px;padding:7px 8px;color:var(--ink);
+  font-family:'Space Mono',monospace;font-size:13px;width:104px}
+input:focus,select:focus{outline:none;border-color:var(--accent)}
+select{width:auto}
+.btn{background:transparent;border:1px solid var(--line);color:var(--ink);border-radius:3px;padding:7px 11px;
+  font-family:'Space Mono',monospace;font-size:11.5px;cursor:pointer}
+.btn.on{border-color:var(--accent);color:var(--accent);background:rgba(127,209,217,.09)}
+svg{width:100%;height:auto;display:block}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);
+  text-align:left;padding:5px 6px;border-bottom:1px solid var(--line);font-weight:400}
+td{padding:7px 6px;border-bottom:1px solid rgba(234,242,255,.07)}
+.bar{height:5px;border-radius:99px;background:var(--sun);display:block}
+.mono{font-family:'Space Mono',monospace;font-size:11.5px}
+.note{font-size:12.5px;color:var(--dim);line-height:1.6;margin-top:10px}
+.matches{display:flex;flex-direction:column;gap:4px;margin-top:6px}
+.match{display:flex;justify-content:space-between;gap:10px;align-items:center;text-align:left;width:100%;
+  max-width:340px;background:var(--paper);border:1px solid var(--line);border-radius:3px;padding:7px 9px;cursor:pointer}
+.match:hover{border-color:var(--accent)}
+.match .mname{font-size:12.5px}
+.match .mco{font-family:'Space Mono',monospace;font-size:10px;color:var(--dim)}
+.nores{font-size:12px;color:var(--dim);padding:6px 2px}
+.big{font-family:'Space Mono',monospace;font-size:15px}
+.you{color:var(--accent)}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="eyebrow">Drafting Table · Module 02</div>
+  <h1>Sun Exposure by Wall</h1>
+
+  <div class="panel">
+    <h2>Location &amp; date</h2>
+
+    <div class="field" style="margin-bottom:4px;">
+      <label>Search a place</label>
+      <input id="place" placeholder="Toronto, Vancouver, Sydney…" style="width:100%;max-width:340px">
+    </div>
+    <div id="matches" class="matches"></div>
+
+    <div class="row" style="margin-top:8px">
+      <div class="field"><label>Latitude</label><input id="lat" type="number" step="0.01" value="43.65"></div>
+      <div class="field"><label>Longitude</label><input id="lon" type="number" step="0.01" value="-79.38"></div>
+      <div class="field"><label>UTC offset</label><input id="tz" type="number" step="0.5" value="-5"></div>
+    </div>
+    <div class="note" style="margin-top:6px">
+      Coordinates are rounded to two decimals — roughly a kilometre. That is far more precision than
+      sun angles need, and it means no street address is ever stored.
+    </div>
+    <div class="row" style="margin-top:10px">
+      <button class="btn" data-d="03-20">Mar equinox</button>
+      <button class="btn" data-d="06-21">Jun solstice</button>
+      <button class="btn" data-d="09-22">Sep equinox</button>
+      <button class="btn" data-d="12-21">Dec solstice</button>
+    </div>
+    <div class="note" id="daynote"></div>
+  </div>
+
+  <div class="panel">
+    <h2>Sun path — altitude through the day</h2>
+    <div id="chart"></div>
+  </div>
+
+  <div class="panel">
+    <h2>Direct sun by wall</h2>
+    <table id="tbl"></table>
+    <div class="note">Hours a vertical window on each wall receives direct sun, and the clock window when it lands. Assumes a flat horizon with nothing blocking — neighbouring buildings and trees cut this down, sometimes a lot.</div>
+  </div>
+
+  <div class="panel">
+    <h2>What this means for the room</h2>
+    <div class="note" id="advice"></div>
+  </div>
+</div>
+
+<script>
+const R=Math.PI/180, D=180/Math.PI;
+const WALLS=[["North",0],["Northeast",45],["East",90],["Southeast",135],
+             ["South",180],["Southwest",225],["West",270],["Northwest",315]];
+let dateStr="06-21";
+
+function doy(md){const [m,d]=md.split('-').map(Number);return Math.round((Date.UTC(2025,m-1,d)-Date.UTC(2025,0,0))/864e5);}
+
+// NOAA solar position. minutes = local clock minutes past midnight.
+function sun(lat,lon,tz,n,minutes){
+  const g=2*Math.PI/365*(n-1+(minutes/60-12)/24);
+  const eq=229.18*(7.5e-5+1.868e-3*Math.cos(g)-0.032077*Math.sin(g)-0.014615*Math.cos(2*g)-0.040849*Math.sin(2*g));
+  const dec=0.006918-0.399912*Math.cos(g)+0.070257*Math.sin(g)-0.006758*Math.cos(2*g)
+           +0.000907*Math.sin(2*g)-0.002697*Math.cos(3*g)+0.00148*Math.sin(3*g);
+  const tst=minutes+eq+4*lon-60*tz;
+  const ha=(tst/4-180)*R;
+  const la=lat*R;
+  const cosZ=Math.sin(la)*Math.sin(dec)+Math.cos(la)*Math.cos(dec)*Math.cos(ha);
+  const z=Math.acos(Math.max(-1,Math.min(1,cosZ)));
+  const alt=90-z*D;
+  let az;
+  const den=Math.cos(la)*Math.sin(z);
+  if(Math.abs(den)<1e-6) az=180;
+  else{
+    let c=(Math.sin(dec)-Math.sin(la)*Math.cos(z))/den;
+    c=Math.max(-1,Math.min(1,c));
+    az=Math.acos(c)*D;
+    if(ha>0) az=360-az;
+  }
+  return {alt,az};
+}
+
+const hhmm=m=>{const h=Math.floor(m/60),x=Math.round(m%60);
+  const ap=h>=12?'pm':'am';const hh=((h+11)%12)+1;return hh+':'+String(x).padStart(2,'0')+ap;};
+
+function angDiff(a,b){let d=Math.abs(a-b)%360;return d>180?360-d:d;}
+
+function run(){
+  const lat=+lat_.value, lon=+lon_.value, tz=+tz_.value, n=doy(dateStr);
+  const step=5, samples=[];
+  for(let m=0;m<1440;m+=step) samples.push({m,...sun(lat,lon,tz,n,m)});
+
+  // daylight
+  const up=samples.filter(s=>s.alt>0);
+  const rise=up.length?up[0].m:null, set=up.length?up[up.length-1].m:null;
+  const peak=samples.reduce((a,b)=>b.alt>a.alt?b:a);
+  document.getElementById('daynote').innerHTML= up.length?
+    'Sunrise <span class="you">'+hhmm(rise)+'</span> · sunset <span class="you">'+hhmm(set)+
+    '</span> · <span class="you">'+((set-rise)/60).toFixed(1)+' h</span> of daylight · sun peaks at <span class="you">'+
+    peak.alt.toFixed(0)+'°</span> altitude'
+    : 'The sun does not rise at this latitude on this date.';
+
+  chart(samples);
+
+  // per-wall exposure
+  const rows=WALLS.map(([name,facing])=>{
+    let mins=0,first=null,last=null,peakI=0;
+    samples.forEach(s=>{
+      if(s.alt<=0) return;
+      const d=angDiff(s.az,facing);
+      if(d<90){
+        mins+=step;
+        if(first===null)first=s.m; last=s.m+step;
+        const I=Math.cos(s.alt*R)*Math.cos(d*R);
+        if(I>peakI)peakI=I;
+      }
+    });
+    return {name,facing,hrs:mins/60,first,last,peakI};
+  });
+  const max=Math.max(...rows.map(r=>r.hrs),1);
+  document.getElementById('tbl').innerHTML=
+    '<tr><th>Wall</th><th>Direct sun</th><th>Window</th><th></th></tr>'+
+    rows.map(r=>'<tr><td>'+r.name+'</td><td class="mono">'+r.hrs.toFixed(1)+' h</td><td class="mono" style="color:var(--dim)">'+
+      (r.hrs?hhmm(r.first)+'–'+hhmm(r.last):'—')+
+      '</td><td style="width:32%"><span class="bar" style="width:'+(r.hrs/max*100)+'%;background:'+
+      (r.peakI>.7?'var(--sun)':r.peakI>.4?'var(--warm)':'var(--cool)')+'"></span></td></tr>').join('');
+
+  const s=rows.find(r=>r.name==='South'), w=rows.find(r=>r.name==='West'), e=rows.find(r=>r.name==='East');
+  document.getElementById('advice').innerHTML=
+    'South-facing windows are getting <span class="you">'+s.hrs.toFixed(1)+' hours</span> today, centred on midday and hitting the glass at a steep angle. '+
+    'That is the light you want for plants and for a room that stays bright without being blinding — '+
+    (lat>0?'and in winter it reaches deep into the room, which is free heat.':'')+
+    '<br><br>West walls take <span class="you">'+w.hrs.toFixed(1)+' h</span> of low, hot afternoon sun — the kind that glares on a TV screen and fades upholstery. '+
+    'East takes <span class="you">'+e.hrs.toFixed(1)+' h</span> of gentler morning light. '+
+    'Screens and artwork belong on walls that face away from the strongest exposure; seating and plants belong facing into it.';
+}
+
+function chart(sm){
+  const W=680,H=210,pad=30;
+  const x=m=>pad+(m/1440)*(W-pad*1.5);
+  const maxA=Math.max(20,Math.ceil(Math.max(...sm.map(s=>s.alt))/10)*10);
+  const y=a=>H-pad-(a/maxA)*(H-pad*1.6);
+  let path='',started=false;
+  sm.forEach(s=>{const a=Math.max(0,s.alt);path+=(started?'L':'M')+x(s.m).toFixed(1)+' '+y(a).toFixed(1)+' ';started=true;});
+  let ticks='';
+  for(let h=0;h<=24;h+=6) ticks+='<line x1="'+x(h*60)+'" y1="'+pad*0.7+'" x2="'+x(h*60)+'" y2="'+(H-pad)+'" stroke="rgba(234,242,255,.1)"/>'+
+    '<text x="'+x(h*60)+'" y="'+(H-pad+14)+'" fill="rgba(234,242,255,.5)" font-size="10" font-family="Space Mono" text-anchor="middle">'+
+    (h===0?'12a':h===12?'12p':h<12?h+'a':(h-12)+'p')+'</text>';
+  document.getElementById('chart').innerHTML=
+   '<svg viewBox="0 0 '+W+' '+H+'">'+ticks+
+   '<path d="'+path+'L'+x(1440)+' '+y(0)+' L'+x(0)+' '+y(0)+' Z" fill="rgba(242,193,78,.13)"/>'+
+   '<path d="'+path+'" fill="none" stroke="var(--sun)" stroke-width="2"/>'+
+   '<line x1="'+pad+'" y1="'+y(0)+'" x2="'+(W-pad*0.5)+'" y2="'+y(0)+'" stroke="rgba(234,242,255,.4)"/>'+
+   '<text x="'+pad+'" y="'+(pad*0.6)+'" fill="rgba(234,242,255,.5)" font-size="10" font-family="Space Mono">'+maxA+'° altitude</text>'+
+   '</svg>';
+}
+
+/* ============ place lookup ============
+
+   This prototype searches a bundled city list so it works with no network.
+   In sola, swap searchPlaces() for a real geocoder. The shape of the result
+   is deliberately the same, so nothing else has to change:
+
+     async function searchPlaces(q){
+       const url = 'https://nominatim.openstreetmap.org/search'
+                 + '?format=json&limit=5&addressdetails=1&q=' + encodeURIComponent(q);
+       const res = await fetch(url, { headers: { 'User-Agent': 'sola/0.1 (you@email.com)' } });
+       const data = await res.json();
+       return data.map(d => ({
+         name: d.display_name,
+         lat: Math.round(d.lat * 100) / 100,     // round: ~1km, all sun maths needs
+         lon: Math.round(d.lon * 100) / 100,
+       }));
+     }
+
+   Notes for the real version:
+     - Nominatim allows 1 request per second. Debounce input by ~400ms and
+       cache results, or you will get blocked.
+     - Always show several matches and let the user pick. Never auto-select
+       the first hit; "Main St" exists in thousands of towns.
+     - Store only the chosen coordinates, never the address string.
+     - Timezone is a separate lookup. tz-lookup is a small offline package
+       that maps coordinates to an IANA zone without an API call.
+*/
+const CITIES=[
+ ["Toronto, Canada",43.65,-79.38,-5],["Vancouver, Canada",49.28,-123.12,-8],
+ ["Montreal, Canada",45.50,-73.57,-5],["Calgary, Canada",51.05,-114.07,-7],
+ ["Halifax, Canada",44.65,-63.57,-4],["Winnipeg, Canada",49.90,-97.14,-6],
+ ["New York, USA",40.71,-74.01,-5],["Los Angeles, USA",34.05,-118.24,-8],
+ ["Chicago, USA",41.88,-87.63,-6],["Seattle, USA",47.61,-122.33,-8],
+ ["Austin, USA",30.27,-97.74,-6],["Miami, USA",25.76,-80.19,-5],
+ ["Denver, USA",39.74,-104.99,-7],["Boston, USA",42.36,-71.06,-5],
+ ["Mexico City, Mexico",19.43,-99.13,-6],["London, UK",51.51,-0.13,0],
+ ["Edinburgh, UK",55.95,-3.19,0],["Dublin, Ireland",53.35,-6.26,0],
+ ["Paris, France",48.86,2.35,1],["Berlin, Germany",52.52,13.40,1],
+ ["Madrid, Spain",40.42,-3.70,1],["Rome, Italy",41.90,12.50,1],
+ ["Stockholm, Sweden",59.33,18.07,1],["Reykjavik, Iceland",64.15,-21.94,0],
+ ["Lagos, Nigeria",6.52,3.38,1],["Cairo, Egypt",30.04,31.24,2],
+ ["Nairobi, Kenya",-1.29,36.82,3],["Cape Town, South Africa",-33.92,18.42,2],
+ ["Dubai, UAE",25.20,55.27,4],["Mumbai, India",19.08,72.88,5.5],
+ ["Delhi, India",28.61,77.21,5.5],["Bangkok, Thailand",13.76,100.50,7],
+ ["Singapore",1.35,103.82,8],["Hong Kong",22.32,114.17,8],
+ ["Beijing, China",39.90,116.41,8],["Seoul, South Korea",37.57,126.98,9],
+ ["Tokyo, Japan",35.68,139.65,9],["Sydney, Australia",-33.87,151.21,10],
+ ["Melbourne, Australia",-37.81,144.96,10],["Auckland, New Zealand",-36.85,174.76,12],
+ ["São Paulo, Brazil",-23.55,-46.63,-3],["Buenos Aires, Argentina",-34.60,-58.38,-3],
+ ["Lima, Peru",-12.05,-77.04,-5],["Bogotá, Colombia",4.71,-74.07,-5],
+ ["Santiago, Chile",-33.45,-70.67,-4],["Quito, Ecuador",-0.18,-78.47,-5]
+].map(c=>({name:c[0],lat:c[1],lon:c[2],tz:c[3]}));
+
+function searchPlaces(q){
+  q=q.trim().toLowerCase();
+  if(q.length<2) return [];
+  return CITIES.filter(c=>c.name.toLowerCase().includes(q)).slice(0,5);
+}
+
+let searchTimer=null;
+document.getElementById('place').addEventListener('input',e=>{
+  clearTimeout(searchTimer);
+  const q=e.target.value;
+  // debounce: a real geocoder is rate-limited, so never fire on every keypress
+  searchTimer=setTimeout(()=>showMatches(searchPlaces(q),q),300);
+});
+
+function showMatches(list,q){
+  const box=document.getElementById('matches');
+  box.innerHTML='';
+  if(q.trim().length<2) return;
+  if(!list.length){
+    box.innerHTML='<div class="nores">No match. Enter coordinates directly below, or try just the city name.</div>';
+    return;
+  }
+  list.forEach(p=>{
+    const b=document.createElement('button');
+    b.className='match';
+    b.innerHTML='<span class="mname">'+p.name+'</span><span class="mco">'+
+      p.lat.toFixed(2)+', '+p.lon.toFixed(2)+'</span>';
+    b.onclick=()=>{
+      lat_.value=p.lat; lon_.value=p.lon; tz_.value=p.tz;
+      document.getElementById('place').value=p.name;
+      box.innerHTML='';
+      run();
+    };
+    box.appendChild(b);
+  });
+}
+const lat_=document.getElementById('lat'),lon_=document.getElementById('lon'),tz_=document.getElementById('tz');
+[lat_,lon_,tz_].forEach(i=>i.addEventListener('input',run));
+document.querySelectorAll('[data-d]').forEach(b=>b.onclick=()=>{
+  dateStr=b.dataset.d;
+  document.querySelectorAll('[data-d]').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on'); run();
+});
+document.querySelector('[data-d="06-21"]').classList.add('on');
+run();
+</script>
+</body>
+</html>

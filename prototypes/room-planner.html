@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Drafting Table — Room Planner</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#0A1F38;
+  --panel:#0E2A47;
+  --panel-2:#123256;
+  --ink:#EAF2FF;
+  --dim:rgba(234,242,255,.55);
+  --line:rgba(234,242,255,.16);
+  --accent:#7FD1D9;
+  --warn:#E2574C;
+  --ok:#7FD98F;
+  --grid:rgba(234,242,255,.055);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{margin:0;height:100%;}
+body{
+  background:var(--paper);
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:24px 24px;
+  color:var(--ink);
+  font-family:'Inter',system-ui,sans-serif;
+  font-size:14px;
+  overscroll-behavior:none;
+}
+button,input,select{font-family:inherit;font-size:inherit;color:inherit;}
+button{cursor:pointer;}
+
+.app{max-width:1100px;margin:0 auto;padding:14px 12px 40px;}
+
+/* ---------- header ---------- */
+header{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:12px;flex-wrap:wrap;}
+.eyebrow{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--accent);}
+h1{font-family:'Space Mono',monospace;font-size:19px;margin:4px 0 0;letter-spacing:.01em;}
+.hbtns{display:flex;gap:6px;}
+
+.btn{
+  background:transparent;border:1px solid var(--line);color:var(--ink);
+  border-radius:3px;padding:7px 11px;font-size:12px;
+  font-family:'Space Mono',monospace;letter-spacing:.04em;
+}
+.btn:hover{border-color:var(--accent);color:var(--accent);}
+.btn.solid{background:var(--accent);border-color:var(--accent);color:#062033;font-weight:700;}
+.btn.danger:hover{border-color:var(--warn);color:var(--warn);}
+.btn:disabled{opacity:.35;cursor:default;}
+
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:12px;}
+h2{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin:0 0 9px;}
+
+/* ---------- rooms ---------- */
+.roomtabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;margin-bottom:10px;}
+.tab{white-space:nowrap;background:var(--panel);border:1px solid var(--line);border-radius:3px;padding:6px 11px;font-size:12px;font-family:'Space Mono',monospace;}
+.tab.on{background:var(--panel-2);border-color:var(--accent);color:var(--accent);}
+
+.dimrow{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;margin-bottom:10px;}
+.field{display:flex;flex-direction:column;gap:4px;}
+.field label{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);font-family:'Space Mono',monospace;}
+.field input{
+  background:var(--paper);border:1px solid var(--line);border-radius:3px;
+  padding:7px 8px;width:88px;font-family:'Space Mono',monospace;font-size:13px;
+}
+.field input:focus{outline:none;border-color:var(--accent);}
+
+/* ---------- layout ---------- */
+.main{display:grid;grid-template-columns:1fr;gap:12px;}
+@media(min-width:860px){.main{grid-template-columns:270px 1fr;align-items:start;}}
+
+/* ---------- catalog ---------- */
+.search{width:100%;background:var(--paper);border:1px solid var(--line);border-radius:3px;padding:9px 10px;margin-bottom:8px;}
+.search:focus{outline:none;border-color:var(--accent);}
+.cats{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:9px;}
+.cat{font-size:10.5px;font-family:'Space Mono',monospace;padding:4px 8px;border:1px solid var(--line);border-radius:99px;background:transparent;color:var(--dim);}
+.cat.on{border-color:var(--accent);color:var(--accent);}
+.catalog{max-height:280px;overflow-y:auto;display:flex;flex-direction:column;gap:5px;}
+@media(min-width:860px){.catalog{max-height:440px;}}
+.item{
+  display:flex;align-items:center;gap:9px;width:100%;text-align:left;
+  background:var(--paper);border:1px solid var(--line);border-radius:3px;padding:8px 9px;
+}
+.item:hover{border-color:var(--accent);}
+.chip{width:16px;height:16px;border-radius:2px;flex-shrink:0;}
+.item .nm{font-size:12.5px;line-height:1.25;}
+.item .sz{font-family:'Space Mono',monospace;font-size:10px;color:var(--dim);}
+.empty{color:var(--dim);font-size:12px;padding:10px 2px;}
+
+/* ---------- canvas ---------- */
+.stage{background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:12px;}
+.roomwrap{position:relative;width:100%;}
+.room{
+  position:relative;width:100%;
+  border:2px solid var(--ink);
+  background:
+    linear-gradient(rgba(234,242,255,.07) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(234,242,255,.07) 1px,transparent 1px);
+  touch-action:none;overflow:hidden;
+}
+.pc{
+  position:absolute;border-radius:2px;touch-action:none;
+  display:flex;align-items:center;justify-content:center;
+  border:1px solid rgba(0,0,0,.35);
+  font-family:'Space Mono',monospace;font-size:9px;line-height:1.1;
+  text-align:center;padding:2px;overflow:hidden;color:#08192b;font-weight:700;
+}
+.pc.sel{outline:2px solid var(--accent);outline-offset:1px;z-index:5;}
+.pc.bad{border:1.5px dashed var(--warn);}
+.pc.clear{background:repeating-linear-gradient(45deg,rgba(226,87,76,.28),rgba(226,87,76,.28) 5px,transparent 5px,transparent 10px);border:1.5px dashed var(--warn);color:var(--warn);}
+.scalebar{display:flex;justify-content:space-between;font-family:'Space Mono',monospace;font-size:10px;color:var(--dim);margin-top:7px;}
+
+/* ---------- selection ---------- */
+.selbar{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:10px;padding-top:10px;border-top:1px solid var(--line);}
+.selname{font-family:'Space Mono',monospace;font-size:12px;margin-right:auto;}
+.rotbar{margin-top:8px;display:flex;flex-direction:column;gap:7px;}
+.rotrow{display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
+.btn.nudge{padding:6px 9px;font-size:11px;}
+.btn.snapbtn{padding:5px 9px;font-size:11px;}
+.rotval{min-width:42px;text-align:right;color:var(--accent);font-size:12px;}
+#rotSlider{flex:1;min-width:110px;accent-color:var(--accent);background:transparent;}
+.snaptog{display:flex;align-items:center;gap:5px;font-family:'Space Mono',monospace;font-size:11px;color:var(--dim);margin-left:auto;}
+.snaptog input{accent-color:var(--accent);}
+.hint{color:var(--dim);font-size:11.5px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line);line-height:1.55;}
+
+/* ---------- report ---------- */
+.meter{height:6px;background:var(--paper);border:1px solid var(--line);border-radius:99px;overflow:hidden;margin:6px 0 4px;}
+.meter i{display:block;height:100%;background:var(--ok);transition:width .25s,background .25s;}
+.stat{font-family:'Space Mono',monospace;font-size:11px;color:var(--dim);}
+.flags{margin-top:10px;display:flex;flex-direction:column;gap:6px;}
+.flag{font-size:12px;line-height:1.45;padding:7px 9px;border-radius:3px;border-left:2px solid var(--warn);background:rgba(226,87,76,.09);}
+.flag.good{border-left-color:var(--ok);background:rgba(127,217,143,.08);}
+.foot{margin-top:14px;font-size:11px;color:var(--dim);line-height:1.6;}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header>
+    <div>
+      <div class="eyebrow">Drafting Table</div>
+      <h1>Room Planner</h1>
+    </div>
+    <div class="hbtns">
+      <button class="btn" id="saveBtn">Save</button>
+      <button class="btn" id="loadBtn">Load</button>
+      <button class="btn danger" id="clearBtn">Clear room</button>
+    </div>
+  </header>
+
+  <div class="roomtabs" id="roomtabs"></div>
+
+  <div class="panel" style="margin-bottom:12px;">
+    <h2>Room dimensions</h2>
+    <div class="dimrow">
+      <div class="field"><label>Name</label><input id="rName" style="width:130px"></div>
+      <div class="field"><label>Width (ft)</label><input id="rW" type="number" step="0.5" min="3"></div>
+      <div class="field"><label>Length (ft)</label><input id="rL" type="number" step="0.5" min="3"></div>
+      <div class="field"><label>Ceiling (ft)</label><input id="rH" type="number" step="0.5" min="6"></div>
+    </div>
+    <div class="stat" id="areaOut"></div>
+  </div>
+
+  <div class="main">
+
+    <div class="panel">
+      <h2>Furniture catalog</h2>
+      <input class="search" id="q" placeholder="Search — sofa, piano, island…">
+      <div class="cats" id="cats"></div>
+      <div class="catalog" id="catalog"></div>
+    </div>
+
+    <div>
+      <div class="stage">
+        <div class="roomwrap"><div class="room" id="room"></div></div>
+        <div class="scalebar"><span id="scaleL"></span><span id="scaleR"></span></div>
+
+        <div class="selbar" id="selbar" style="display:none;">
+          <span class="selname" id="selName"></span>
+          <button class="btn danger" id="delBtn">Remove</button>
+        </div>
+        <div class="rotbar" id="rotbar" style="display:none;">
+          <div class="rotrow">
+            <button class="btn nudge" data-nudge="-15">&#8630; 15°</button>
+            <input type="range" id="rotSlider" min="0" max="359" step="1" value="0">
+            <button class="btn nudge" data-nudge="15">15° &#8631;</button>
+            <span class="rotval mono" id="rotVal">0°</span>
+          </div>
+          <div class="rotrow">
+            <button class="btn snapbtn" data-set="0">0°</button>
+            <button class="btn snapbtn" data-set="45">45°</button>
+            <button class="btn snapbtn" data-set="90">90°</button>
+            <button class="btn snapbtn" data-set="135">135°</button>
+            <button class="btn snapbtn" data-set="180">180°</button>
+            <button class="btn snapbtn" data-set="270">270°</button>
+            <label class="snaptog"><input type="checkbox" id="snap15" checked> snap 15°</label>
+          </div>
+        </div>
+
+        <div class="hint">Tap a catalog item to drop it in. Drag to move — pieces snap to a 3-inch grid and stop at the walls.</div>
+      </div>
+
+      <div class="panel" style="margin-top:12px;">
+        <h2>Clearance report</h2>
+        <div class="meter"><i id="bar"></i></div>
+        <div class="stat" id="density"></div>
+        <div class="flags" id="flags"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="foot">
+    Catalog sizes are real manufacturer or standard retail dimensions in inches (width × depth × height). Always re-measure your own pieces — the same "3-seat sofa" varies by a foot between brands.
+  </div>
+</div>
+
+<script>
+/* ============ catalog: real dimensions in INCHES (w × d × h) ============ */
+const CAT = [
+ // seating
+ ["Sofa, 3-seat",84,38,34,"Seating","#6F4A31"],
+ ["Loveseat",60,38,34,"Seating","#7A5539"],
+ ["Sectional, L-shape",105,85,34,"Seating","#5B3B26"],
+ ["Armchair",33,35,33,"Seating","#8A6244"],
+ ["Recliner",36,38,41,"Seating","#8A6244"],
+ ["Ottoman / pouf",24,24,17,"Seating","#C77B3E"],
+ ["Bar stool, w/ arms",22,22,42,"Seating","#B9793C"],
+ ["Bar stool, backless",16,16,30,"Seating","#B9793C"],
+ ["Dining chair",18,20,36,"Seating","#A9713F"],
+ ["Accent chair",30,31,32,"Seating","#8A6244"],
+ // tables
+ ["Coffee table",48,24,18,"Tables","#9A7048"],
+ ["Side table",22,22,24,"Tables","#9A7048"],
+ ["Console table",48,16,30,"Tables","#8B6440"],
+ ["Dining table, 4-seat",60,36,30,"Tables","#7E5B39"],
+ ["Dining table, 6-seat",72,38,30,"Tables","#7E5B39"],
+ ["Kitchen island",72,30,36,"Tables","#3A4049"],
+ ["Desk",55,28,30,"Tables","#7E5B39"],
+ // storage
+ ["IKEA Kallax 4×2",57.5,15.4,30,"Storage","#E7E3DA"],
+ ["IKEA Kallax 2×4",30,15.4,57,"Storage","#E7E3DA"],
+ ["IKEA Billy bookcase",31.5,11,79,"Storage","#E7E3DA"],
+ ["TV stand",60,16,20,"Storage","#DAD5CA"],
+ ["Dresser, 6-drawer",52,20,32,"Storage","#8B6440"],
+ ["Wardrobe (PAX 39\")",39,23,93,"Storage","#E7E3DA"],
+ ["Shoe rack",30,14,34,"Storage","#C9C3B6"],
+ ["Bookshelf, tall",36,13,72,"Storage","#C9C3B6"],
+ // beds
+ ["Twin bed",38,75,25,"Beds","#B4A7C4"],
+ ["Full bed",54,75,25,"Beds","#B4A7C4"],
+ ["Queen bed",60,80,25,"Beds","#A899BD"],
+ ["King bed",76,80,25,"Beds","#A899BD"],
+ ["Nightstand",18,16,24,"Beds","#9A7048"],
+ ["Crib",52,28,35,"Beds","#B4A7C4"],
+ // appliances
+ ["Refrigerator",36,32,70,"Appliances","#B7BEC7"],
+ ["Range / stove",30,26,36,"Appliances","#B7BEC7"],
+ ["Dishwasher",24,24,34,"Appliances","#B7BEC7"],
+ ["Washer",27,30,38,"Appliances","#B7BEC7"],
+ ["Dryer",27,30,38,"Appliances","#B7BEC7"],
+ // music + misc
+ ["Upright piano",58,25,50,"Music","#2E1D14"],
+ ["Piano bench",30,14,20,"Music","#3C2718"],
+ ["Digital keyboard + stand",54,16,30,"Music","#3C2718"],
+ ["Vinyl console table",42,18,32,"Music","#6B4423"],
+ ["Guitar stand",14,14,36,"Music","#6B4423"],
+ ["Floor lamp",14,14,70,"Lighting","#D9C98A"],
+ ["Table lamp",10,10,24,"Lighting","#D9C98A"],
+ ["Rug 5×8",60,96,0,"Rugs","#4E6076"],
+ ["Rug 8×10",96,120,0,"Rugs","#4E6076"],
+ ["Rug 9×12",108,144,0,"Rugs","#4E6076"],
+ ["Plant, large",24,24,60,"Misc","#6FA97A"],
+ ["Bike",68,24,42,"Misc","#7E8894"],
+ ["Exit / keep-clear zone",36,36,0,"Safety","#E2574C"]
+].map((r,i)=>({id:i,name:r[0],w:r[1],d:r[2],h:r[3],cat:r[4],color:r[5]}));
+
+const CATS = ["All",...[...new Set(CAT.map(c=>c.cat))]];
+
+/* ============ state ============ */
+let rooms = [{name:"Living / Dining",w:17.75,l:13.17,h:9,items:[]}];
+let cur = 0, sel = null, filter="All", query="";
+let nextId = 1;
+const room = () => rooms[cur];
+const F = n => Math.round(n*100)/100;
+
+/* ============ rooms UI ============ */
+function drawTabs(){
+  const t=document.getElementById('roomtabs'); t.innerHTML='';
+  rooms.forEach((r,i)=>{
+    const b=document.createElement('button');
+    b.className='tab'+(i===cur?' on':''); b.textContent=r.name;
+    b.onclick=()=>{cur=i;sel=null;syncFields();render();drawTabs();};
+    t.appendChild(b);
+  });
+  const add=document.createElement('button');
+  add.className='tab'; add.textContent='+ Add room';
+  add.onclick=()=>{rooms.push({name:'Room '+(rooms.length+1),w:12,l:12,h:9,items:[]});cur=rooms.length-1;sel=null;syncFields();drawTabs();render();};
+  t.appendChild(add);
+}
+function syncFields(){
+  rName.value=room().name; rW.value=room().w; rL.value=room().l; rH.value=room().h;
+}
+['rName','rW','rL','rH'].forEach(id=>{
+  document.getElementById(id).addEventListener('input',()=>{
+    const r=room();
+    r.name=rName.value||'Room';
+    r.w=Math.max(3,parseFloat(rW.value)||3);
+    r.l=Math.max(3,parseFloat(rL.value)||3);
+    r.h=Math.max(6,parseFloat(rH.value)||8);
+    r.items.forEach(clamp);
+    drawTabs(); render();
+  });
+});
+
+/* ============ catalog UI ============ */
+function drawCats(){
+  const c=document.getElementById('cats'); c.innerHTML='';
+  CATS.forEach(k=>{
+    const b=document.createElement('button');
+    b.className='cat'+(k===filter?' on':''); b.textContent=k;
+    b.onclick=()=>{filter=k;drawCatalog();drawCats();};
+    c.appendChild(b);
+  });
+}
+function drawCatalog(){
+  const el=document.getElementById('catalog'); el.innerHTML='';
+  const list=CAT.filter(f=>
+    (filter==='All'||f.cat===filter) &&
+    (!query || f.name.toLowerCase().includes(query)||f.cat.toLowerCase().includes(query)));
+  if(!list.length){el.innerHTML='<div class="empty">Nothing matches that. Try a broader word, like "table".</div>';return;}
+  list.forEach(f=>{
+    const b=document.createElement('button'); b.className='item';
+    b.innerHTML='<span class="chip" style="background:'+f.color+'"></span><span>'+
+      '<span class="nm">'+f.name+'</span><br><span class="sz">'+f.w+'" × '+f.d+'"'+(f.h?' × '+f.h+'" h':'')+'</span></span>';
+    b.onclick=()=>place(f);
+    el.appendChild(b);
+  });
+}
+document.getElementById('q').addEventListener('input',e=>{query=e.target.value.toLowerCase().trim();drawCatalog();});
+
+/* ============ placement ============ */
+function place(f){
+  const r=room();
+  const it={uid:nextId++,defId:f.id,x:0.5,y:0.5,rot:0};
+  // find first free-ish spot on a simple scan
+  outer: for(let y=0.25;y<r.l-0.5;y+=0.5){
+    for(let x=0.25;x<r.w-0.5;x+=0.5){
+      it.x=x;it.y=y;
+      if(inBounds(it)&&!r.items.some(o=>hit(o,it))) break outer;
+    }
+  }
+  clamp(it); r.items.push(it); sel=it.uid; render();
+}
+const def = it => CAT[it.defId];
+// Unrotated footprint in feet. Rotation is applied separately via corners().
+const sizeOf = it => {const f=def(it); return [f.w/12, f.d/12];};
+
+/* --- rotation geometry -------------------------------------------------
+   A piece is stored by its unrotated top-left (x,y) plus a rotation in
+   degrees. Its true shape is the four corners of that rectangle spun about
+   its own centre. Everything downstream — bounds, overlap, walkways — works
+   from corners(), never from width and depth alone. */
+function centerOf(it){const [w,d]=sizeOf(it); return [it.x+w/2, it.y+d/2];}
+
+function corners(it){
+  const [w,d]=sizeOf(it), [cx,cy]=centerOf(it);
+  const t=(it.rot||0)*Math.PI/180, cos=Math.cos(t), sin=Math.sin(t);
+  return [[-w/2,-d/2],[w/2,-d/2],[w/2,d/2],[-w/2,d/2]]
+    .map(([px,py])=>[cx+px*cos-py*sin, cy+px*sin+py*cos]);
+}
+
+// Axis-aligned box that fully contains the rotated piece.
+function bounds(it){
+  const c=corners(it), xs=c.map(p=>p[0]), ys=c.map(p=>p[1]);
+  return {x0:Math.min(...xs), x1:Math.max(...xs), y0:Math.min(...ys), y1:Math.max(...ys)};
+}
+
+function clamp(it){
+  const r=room(), b=bounds(it);
+  let dx=0, dy=0;
+  if(b.x0<0) dx=-b.x0; else if(b.x1>r.w) dx=r.w-b.x1;
+  if(b.y0<0) dy=-b.y0; else if(b.y1>r.l) dy=r.l-b.y1;
+  it.x+=dx; it.y+=dy;
+}
+
+function inBounds(it){
+  const r=room(), b=bounds(it);
+  return b.x0>=-0.01 && b.y0>=-0.01 && b.x1<=r.w+0.01 && b.y1<=r.l+0.01;
+}
+
+/* Separating Axis Theorem. Two convex shapes miss each other only if some
+   axis exists on which their shadows don't touch. For rectangles the only
+   axes worth testing are the four edge normals. */
+function hit(a,b){
+  const A=corners(a), B=corners(b);
+  for(const poly of [A,B]){
+    for(let i=0;i<4;i++){
+      const [x1,y1]=poly[i], [x2,y2]=poly[(i+1)%4];
+      const ax=-(y2-y1), ay=x2-x1;                    // edge normal
+      const len=Math.hypot(ax,ay); if(!len) continue;
+      const nx=ax/len, ny=ay/len;
+      const proj=p=>p.map(([px,py])=>px*nx+py*ny);
+      const pa=proj(A), pb=proj(B);
+      if(Math.max(...pa) <= Math.min(...pb)+0.02) return false;
+      if(Math.max(...pb) <= Math.min(...pa)+0.02) return false;
+    }
+  }
+  return true;
+}
+
+// Is a point inside a rotated piece? Spin the point backwards, then it's a
+// plain box test.
+function containsPoint(it,px,py){
+  const [w,d]=sizeOf(it), [cx,cy]=centerOf(it);
+  const t=-(it.rot||0)*Math.PI/180;
+  const dx=px-cx, dy=py-cy;
+  const lx=dx*Math.cos(t)-dy*Math.sin(t);
+  const ly=dx*Math.sin(t)+dy*Math.cos(t);
+  return Math.abs(lx)<=w/2 && Math.abs(ly)<=d/2;
+}
+
+/* ============ render ============ */
+function render(){
+  const r=room(), el=document.getElementById('room');
+  const wrapW=el.parentElement.clientWidth||340;
+  const pxft=wrapW/r.w;
+  el.style.height=(r.l*pxft)+'px';
+  el.style.backgroundSize=pxft+'px '+pxft+'px';
+  el.innerHTML='';
+
+  r.items.forEach(it=>{
+    const f=def(it),[w,d]=sizeOf(it);
+    const n=document.createElement('div');
+    n.className='pc'+(it.uid===sel?' sel':'')+(f.cat==='Safety'?' clear':'');
+    n.style.left=(it.x*pxft)+'px'; n.style.top=(it.y*pxft)+'px';
+    n.style.width=(w*pxft)+'px'; n.style.height=(d*pxft)+'px';
+    n.style.transformOrigin='50% 50%';
+    n.style.transform='rotate('+(it.rot||0)+'deg)';
+    if(f.cat!=='Safety') n.style.background=f.color;
+    if(f.cat==='Rugs'){n.style.opacity='.5';n.style.zIndex='0';}
+    if(w*pxft>44&&d*pxft>16) n.textContent=f.name.split(',')[0];
+    drag(n,it);
+    el.appendChild(n);
+  });
+
+  document.getElementById('scaleL').textContent=r.w.toFixed(2)+' ft wide';
+  document.getElementById('scaleR').textContent=r.l.toFixed(2)+' ft deep';
+  document.getElementById('areaOut').textContent=
+    Math.round(r.w*r.l)+' sq ft floor · '+Math.round(r.w*r.l*r.h)+' cu ft volume';
+
+  refreshSelbar();
+  report();
+}
+
+/* ============ drag ============
+   IMPORTANT: never call render() while a drag is in progress.
+   render() wipes the room's innerHTML and rebuilds every piece, which would
+   destroy the very element the pointer is holding. Instead we move the live
+   element's style directly, and only do a full render on pointerup. */
+function drag(node,it){
+  node.addEventListener('pointerdown',e=>{
+    e.preventDefault();
+    e.stopPropagation();
+
+    // update selection highlight without rebuilding the DOM
+    sel=it.uid;
+    document.querySelectorAll('.pc').forEach(n=>n.classList.remove('sel'));
+    node.classList.add('sel');
+    refreshSelbar();
+
+    const el=document.getElementById('room');
+    const pxft=el.clientWidth/room().w;
+    const rect=el.getBoundingClientRect();
+    const ox=e.clientX-rect.left-it.x*pxft, oy=e.clientY-rect.top-it.y*pxft;
+
+    node.setPointerCapture(e.pointerId);
+
+    const move=ev=>{
+      const nx=(ev.clientX-rect.left-ox)/pxft, ny=(ev.clientY-rect.top-oy)/pxft;
+      it.x=Math.round(nx*4)/4; it.y=Math.round(ny*4)/4;   // snap to 3-inch grid
+      clamp(it);
+      node.style.left=(it.x*pxft)+'px';                    // move the live element
+      node.style.top =(it.y*pxft)+'px';
+      report();                                            // warnings update live
+    };
+    const up=ev=>{
+      node.releasePointerCapture(ev.pointerId);
+      node.removeEventListener('pointermove',move);
+      node.removeEventListener('pointerup',up);
+      node.removeEventListener('pointercancel',up);
+      render();                                            // safe now: drag is over
+    };
+    node.addEventListener('pointermove',move);
+    node.addEventListener('pointerup',up);
+    node.addEventListener('pointercancel',up);
+  });
+}
+
+function refreshSelbar(){
+  const s=room().items.find(i=>i.uid===sel);
+  document.getElementById('selbar').style.display=s?'flex':'none';
+  document.getElementById('rotbar').style.display=s?'flex':'none';
+  if(s){
+    const f=def(s);
+    document.getElementById('selName').textContent=f.name+'  ·  '+f.w+'"×'+f.d+'"';
+    document.getElementById('rotSlider').value=s.rot||0;
+    document.getElementById('rotVal').textContent=Math.round(s.rot||0)+'°';
+  }
+}
+
+/* ============ rotation controls ============ */
+function setRot(deg){
+  const it=room().items.find(i=>i.uid===sel); if(!it) return;
+  let v=((deg%360)+360)%360;
+  if(document.getElementById('snap15').checked) v=Math.round(v/15)*15%360;
+  it.rot=v; clamp(it); render();
+}
+document.getElementById('rotSlider').addEventListener('input',e=>setRot(+e.target.value));
+document.querySelectorAll('[data-nudge]').forEach(b=>b.onclick=()=>{
+  const it=room().items.find(i=>i.uid===sel); if(!it) return;
+  setRot((it.rot||0)+ +b.dataset.nudge);
+});
+document.querySelectorAll('[data-set]').forEach(b=>b.onclick=()=>setRot(+b.dataset.set));
+
+document.getElementById('delBtn').onclick=()=>{
+  room().items=room().items.filter(i=>i.uid!==sel); sel=null; render();
+};
+document.getElementById('clearBtn').onclick=()=>{room().items=[];sel=null;render();};
+
+/* ============ clearance report ============ */
+function report(){
+  const r=room(), out=[];
+  const area=r.w*r.l;
+  let used=0;
+  r.items.forEach(it=>{const[w,d]=sizeOf(it);if(def(it).cat!=='Rugs'&&def(it).cat!=='Safety')used+=w*d;});
+  const pct=Math.min(100,Math.round(used/area*100));
+  const bar=document.getElementById('bar');
+  bar.style.width=pct+'%';
+  bar.style.background = pct>55?'var(--warn)':pct>45?'#E8C15A':'var(--ok)';
+  document.getElementById('density').textContent=
+    pct+'% of the floor is furniture ('+Math.round(used)+' of '+Math.round(area)+' sq ft). Comfortable is under 45%.';
+
+  // overlaps
+  const overlaps=new Set();
+  for(let i=0;i<r.items.length;i++)for(let j=i+1;j<r.items.length;j++){
+    const a=r.items[i],b=r.items[j];
+    if(def(a).cat==='Rugs'||def(b).cat==='Rugs')continue;
+    if(hit(a,b)){overlaps.add(a.uid);overlaps.add(b.uid);
+      if(def(a).cat==='Safety'||def(b).cat==='Safety'){
+        const other=def(a).cat==='Safety'?def(b):def(a);
+        out.push(['bad',other.name+' is sitting in a keep-clear zone. Move it out of the exit path.']);
+      } else out.push(['bad',def(a).name+' and '+def(b).name+' overlap.']);
+    }
+  }
+  [...document.querySelectorAll('.pc')].forEach((n,i)=>{
+    n.classList.toggle('bad', overlaps.has(r.items[i]?.uid));
+  });
+
+  if(pct>55) out.push(['bad','Over half the floor is occupied — this will feel cramped. Remove a piece or size something down.']);
+  if(r.w<3||r.l<3) out.push(['bad','Room is smaller than 3 ft on a side.']);
+
+  // main walkway: is there a 30-inch-wide clear vertical or horizontal lane?
+  if(r.items.length && !hasLane(r)) out.push(['bad','No continuous 30-inch walkway crosses the room. Leave a lane wide enough to carry a laundry basket through.']);
+
+  const box=document.getElementById('flags'); box.innerHTML='';
+  const uniq=[...new Map(out.map(o=>[o[1],o])).values()];
+  if(!uniq.length){
+    box.innerHTML='<div class="flag good">No conflicts. Walkways, clearances, and density all check out.</div>';
+  } else uniq.slice(0,6).forEach(o=>{
+    const d=document.createElement('div'); d.className='flag'; d.textContent=o[1]; box.appendChild(d);
+  });
+}
+
+// coarse grid flood-check for a 30" (2.5 ft) clear path wall-to-wall
+function hasLane(r){
+  const step=0.5, cols=Math.ceil(r.w/step), rowsN=Math.ceil(r.l/step);
+  const blocked=[];
+  for(let y=0;y<rowsN;y++){blocked.push([]);
+    for(let x=0;x<cols;x++){
+      const cx=x*step+step/2, cy=y*step+step/2;
+      blocked[y][x]=r.items.some(it=>{
+        const f=def(it); if(f.cat==='Rugs')return false;
+        return containsPoint(it,cx,cy);
+      });
+    }
+  }
+  // need 5 consecutive free cells (2.5 ft) forming a connected path across
+  const free=(x,y)=>x>=0&&y>=0&&x<cols&&y<rowsN&&!blocked[y][x];
+  const wide=(x,y)=>{ // 2.5ft clearance around cell in at least one axis
+    let h=0; for(let i=-2;i<=2;i++) if(free(x+i,y)) h++; 
+    let v=0; for(let i=-2;i<=2;i++) if(free(x,y+i)) v++;
+    return h>=5||v>=5;
+  };
+  const seen=new Set(), stack=[];
+  for(let y=0;y<rowsN;y++) if(free(0,y)&&wide(0,y)){stack.push([0,y]);seen.add('0,'+y);}
+  while(stack.length){
+    const [x,y]=stack.pop();
+    if(x>=cols-1) return true;
+    [[1,0],[-1,0],[0,1],[0,-1]].forEach(([dx,dy])=>{
+      const nx=x+dx,ny=y+dy,k=nx+','+ny;
+      if(!seen.has(k)&&free(nx,ny)&&wide(nx,ny)){seen.add(k);stack.push([nx,ny]);}
+    });
+  }
+  return false;
+}
+
+/* ============ save / load ============ */
+document.getElementById('saveBtn').onclick=async()=>{
+  try{
+    await window.storage.set('plan',JSON.stringify({rooms,nextId}));
+    toast('Saved');
+  }catch(e){toast('Could not save');}
+};
+document.getElementById('loadBtn').onclick=async()=>{
+  try{
+    const res=await window.storage.get('plan');
+    const d=JSON.parse(res.value); rooms=d.rooms; nextId=d.nextId||1; cur=0; sel=null;
+    syncFields(); drawTabs(); render(); toast('Loaded');
+  }catch(e){toast('No saved plan yet');}
+};
+function toast(msg){
+  const t=document.createElement('div');
+  t.textContent=msg;
+  t.style.cssText='position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--panel-2);border:1px solid var(--accent);color:var(--accent);font-family:Space Mono,monospace;font-size:12px;padding:8px 14px;border-radius:3px;z-index:99';
+  document.body.appendChild(t); setTimeout(()=>t.remove(),1600);
+}
+
+/* ============ init ============ */
+drawTabs(); syncFields(); drawCats(); drawCatalog(); render();
+addEventListener('resize',render);
+</script>
+</body>
+</html>
